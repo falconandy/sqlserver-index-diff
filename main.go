@@ -44,14 +44,14 @@ func (idx *index) String() string {
 }
 
 func main() {
-	cfg, err := LoadConfiguration()
+	cfgs, err := LoadConfiguration()
 	if err != nil {
 		log.Fatal(err)
 	}
-	indexes1 := getIndexes(cfg.GetConnectionString1())
-	indexes2 := getIndexes(cfg.GetConnectionString2())
-	saveSortedIndexes(cfg.Database1, indexes1)
-	saveSortedIndexes(cfg.Database2, indexes2)
+	for _, cfg := range cfgs {
+		indexes := getIndexes(cfg.GetConnectionString())
+		saveSortedIndexes(cfg.Database, indexes)
+	}
 }
 
 func saveSortedIndexes(fileName string, indexes []*index) {
@@ -87,18 +87,11 @@ func getIndexes(connectionString string) []*index {
 	}
 	defer rows.Close()
 
-	var schemeName string
-	var tableName string
-	var columnName string
-	var indexName string
+	var schemeName, tableName, columnName, indexName string
 	var indexColumnId int
-	var isDescending bool
-	var isIncluded bool
-	var isDisabled bool
+	var isDescending, isIncluded, isDisabled bool
 	indexes := make([]*index, 0)
-	var prevSchemeName string
-	var prevTableName string
-	var prevIndexName string
+	var prevSchemeName, prevTableName, prevIndexName string
 	var currentIndex *index
 	for rows.Next() {
 		err = rows.Scan(&schemeName, &tableName, &columnName, &indexName, &indexColumnId, &isDescending, &isIncluded, &isDisabled)
@@ -107,10 +100,8 @@ func getIndexes(connectionString string) []*index {
 		}
 		if schemeName != prevSchemeName || tableName != prevTableName || indexName != prevIndexName {
 			prevSchemeName, prevTableName, prevIndexName = schemeName, tableName, indexName
-			if currentIndex != nil {
-				indexes = append(indexes, currentIndex)
-			}
 			currentIndex = &index{scheme:schemeName, table:tableName, index:indexName, enabled:!isDisabled, columns:make([]string, 0, 10), included:make([]string, 0, 10)}
+			indexes = append(indexes, currentIndex)
 		}
 		if !isIncluded {
 			if isDescending {
@@ -120,9 +111,6 @@ func getIndexes(connectionString string) []*index {
 		} else {
 			currentIndex.included = append(currentIndex.included, columnName)
 		}
-	}
-	if currentIndex != nil {
-		indexes = append(indexes, currentIndex)
 	}
 	return indexes
 }
