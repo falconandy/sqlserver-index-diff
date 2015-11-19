@@ -50,7 +50,7 @@ func main() {
 	}
 	for _, cfg := range cfgs {
 		indexes := getIndexes(cfg.GetConnectionString())
-		saveSortedIndexes(cfg.Database, indexes)
+		saveSortedIndexes(cfg.Database + "__" + strings.Replace(cfg.SqlServer, `\`, "_", -1), indexes)
 	}
 }
 
