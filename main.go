@@ -48,10 +48,19 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	done := make(chan bool, len(cfgs))
 	for _, cfg := range cfgs {
-		indexes := getIndexes(cfg.GetConnectionString())
-		saveSortedIndexes(cfg.Database + "__" + strings.Replace(cfg.SqlServer, `\`, "_", -1), indexes)
+		go getAnSaveSortedIndexes(cfg, done)
 	}
+	for i := 0; i < len(cfgs); i ++ {
+		<-done
+	}
+}
+
+func getAnSaveSortedIndexes(cfg *Config, done chan<- bool) {
+	indexes := getIndexes(cfg.GetConnectionString())
+	saveSortedIndexes(cfg.Database + "__" + strings.Replace(cfg.SqlServer, `\`, "_", -1), indexes)
+	done <- true
 }
 
 func saveSortedIndexes(fileName string, indexes []*index) {
