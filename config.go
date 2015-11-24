@@ -1,4 +1,4 @@
-package main
+package indexdiff
 
 import (
 	"path/filepath"
@@ -15,7 +15,7 @@ type Config struct {
 	Password string
 }
 
-func LoadConfiguration() ([]*Config, error) {
+func loadConfiguration() ([]*Config, error) {
 	cfg, err := ini.Load(filepath.Join(filepath.Dir(os.Args[0]), "_config.ini"))
 	if err != nil {
 		return nil, err

@@ -1,4 +1,4 @@
-package main
+package indexdiff
 
 import (
 	"database/sql"
@@ -43,8 +43,8 @@ func (idx *index) String() string {
 	return result
 }
 
-func main() {
-	cfgs, err := LoadConfiguration()
+func SaveSortedIndexes() {
+	cfgs, err := loadConfiguration()
 	if err != nil {
 		log.Fatal(err)
 	}
