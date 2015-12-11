@@ -22,24 +22,29 @@ from    sys.schemas s1
 where i1.is_hypothetical = 0
 order by s1.name, t1.name, i1.name, ic1.index_column_id`
 
-type index struct {
+type table struct {
 	scheme string
-	table string
-	index string
+	name string
+	indexes []*index
+}
+
+type index struct {
+	table *table
+	name string
 	enabled bool
 	columns []string
 	included []string
 }
 
 func (idx *index) String() string {
-	result := fmt.Sprintf("%s.%s (%s)", idx.scheme, idx.table, strings.Join(idx.columns, ", "))
+	result := fmt.Sprintf("%s.%s (%s)", idx.table.scheme, idx.table.name, strings.Join(idx.columns, ", "))
 	if len(idx.included) > 0 {
 		result += fmt.Sprintf(" INCLUDED(%s)", strings.Join(idx.included, ", "))
 	}
 	if !idx.enabled {
 		result += " DISABLED"
 	}
-	result += " --NAME=" + idx.index
+	result += " --NAME=" + idx.name
 	return result
 }
 
@@ -58,18 +63,13 @@ func SaveSortedIndexes() {
 }
 
 func getAnSaveSortedIndexes(cfg *Config, done chan<- bool) {
-	indexes := getIndexes(cfg.GetConnectionString())
+	indexes := GetIndexes(cfg.GetConnectionString())
 	saveSortedIndexes(cfg.Database + "__" + strings.Replace(cfg.SqlServer, `\`, "_", -1), indexes)
 	done <- true
 }
 
 func saveSortedIndexes(fileName string, indexes []*index) {
-	strIndexes := make([]string, len(indexes))
-	for i, idx := range indexes {
-		strIndexes[i] = idx.String()
-	}
-	sort.Strings(strIndexes)
-
+	strIndexes := GetSortedIndexes(indexes)
 	file, err := os.Create(fileName + ".sql")
 	if err != nil {
 		log.Fatal(err)
@@ -86,7 +86,16 @@ func saveSortedIndexes(fileName string, indexes []*index) {
 	}
 }
 
-func getIndexes(connectionString string) []*index {
+func GetSortedIndexes(indexes []*index) []string {
+	strIndexes := make([]string, len(indexes))
+	for i, idx := range indexes {
+		strIndexes[i] = idx.String()
+	}
+	sort.Strings(strIndexes)
+	return strIndexes
+}
+
+func GetIndexes(connectionString string) []*table {
 	conn, err := sql.Open("mssql", connectionString)
 	defer conn.Close()
 
@@ -99,7 +108,7 @@ func getIndexes(connectionString string) []*index {
 	var schemeName, tableName, columnName, indexName string
 	var indexColumnId int
 	var isDescending, isIncluded, isDisabled bool
-	indexes := make([]*index, 0)
+	tables := make([]*table, 0)
 	var prevSchemeName, prevTableName, prevIndexName string
 	var currentIndex *index
 	for rows.Next() {
@@ -121,5 +130,5 @@ func getIndexes(connectionString string) []*index {
 			currentIndex.included = append(currentIndex.included, columnName)
 		}
 	}
-	return indexes
+	return tables
 }
