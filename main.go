@@ -14,6 +14,7 @@ type index struct {
 	table    string
 	index    string
 	enabled  bool
+	unique   bool
 	columns  []string
 	included []string
 }
@@ -25,6 +26,9 @@ func (idx *index) String() string {
 	}
 	if !idx.enabled {
 		result += " DISABLED"
+	}
+	if idx.unique {
+		result += " UNIQUE"
 	}
 	result += " --NAME=" + idx.index
 	return result

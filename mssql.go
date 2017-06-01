@@ -9,7 +9,7 @@ import (
 )
 
 var msIndexesQuery = `
-select  s1.name as SchemaName, t1.name as TableName, c1.name as ColumnName, i1.name as IndexName, ic1.key_ordinal, ic1.is_descending_key, ic1.is_included_column, i1.is_disabled
+select  s1.name as SchemaName, t1.name as TableName, c1.name as ColumnName, i1.name as IndexName, ic1.key_ordinal, ic1.is_descending_key, ic1.is_included_column, i1.is_disabled, i1.is_unique
 from    sys.schemas s1
         join sys.tables t1 on t1.schema_id = s1.schema_id
         join sys.columns c1 on t1.object_id = c1.object_id
@@ -50,18 +50,18 @@ func (e *MsSqlEngine) GetIndexes() []*index {
 
 	var schemeName, tableName, columnName, indexName string
 	var indexColumnId int
-	var isDescending, isIncluded, isDisabled bool
+	var isDescending, isIncluded, isDisabled, isUnique bool
 	indexes := make([]*index, 0)
 	var prevSchemeName, prevTableName, prevIndexName string
 	var currentIndex *index
 	for rows.Next() {
-		err = rows.Scan(&schemeName, &tableName, &columnName, &indexName, &indexColumnId, &isDescending, &isIncluded, &isDisabled)
+		err = rows.Scan(&schemeName, &tableName, &columnName, &indexName, &indexColumnId, &isDescending, &isIncluded, &isDisabled, &isUnique)
 		if err != nil {
 			log.Fatal("Scan failed:", err.Error())
 		}
 		if schemeName != prevSchemeName || tableName != prevTableName || indexName != prevIndexName {
 			prevSchemeName, prevTableName, prevIndexName = schemeName, tableName, indexName
-			currentIndex = &index{scheme: schemeName, table: tableName, index: indexName, enabled: !isDisabled, columns: make([]string, 0, 10), included: make([]string, 0, 10)}
+			currentIndex = &index{scheme: schemeName, table: tableName, index: indexName, enabled: !isDisabled, unique: isUnique, columns: make([]string, 0, 10), included: make([]string, 0, 10)}
 			indexes = append(indexes, currentIndex)
 		}
 		if !isIncluded {

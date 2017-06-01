@@ -58,7 +58,11 @@ func (e *PostgresEngine) GetIndexes() []*index {
 		}
 		if schemeName != prevSchemeName || tableName != prevTableName || indexName != prevIndexName {
 			prevSchemeName, prevTableName, prevIndexName = schemeName, tableName, indexName
-			currentIndex = &index{scheme: schemeName, table: tableName, index: indexName, enabled: true, columns: make([]string, 0, 10)}
+			isUnique := false
+			if strings.Contains(indexDef, " UNIQUE ") {
+				isUnique = true
+			}
+			currentIndex = &index{scheme: schemeName, table: tableName, index: indexName, enabled: true, unique: isUnique, columns: make([]string, 0, 10)}
 			indexes = append(indexes, currentIndex)
 
 			match := postgresIndexRe.FindStringSubmatch(indexDef)
