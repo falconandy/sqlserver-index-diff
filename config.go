@@ -1,17 +1,19 @@
 package indexdiff
 
 import (
-	"path/filepath"
-	"gopkg.in/ini.v1"
-	"fmt"
-	"strings"
 	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+
+	"gopkg.in/ini.v1"
 )
 
 type Config struct {
-	SqlServer string
+	Server   string
+	Port     int
 	Database string
-	User string
+	User     string
 	Password string
 }
 
@@ -25,7 +27,8 @@ func loadConfiguration() ([]*Config, error) {
 	for _, section := range cfg.Sections() {
 		if strings.HasPrefix(section.Name(), "Database") {
 			config := &Config{}
-			config.SqlServer = strings.TrimSpace(section.Key("Server").String())
+			config.Server = strings.TrimSpace(section.Key("Server").String())
+			config.Port, _ = strconv.Atoi(strings.TrimSpace(section.Key("Port").String()))
 			config.Database = strings.TrimSpace(section.Key("Database").String())
 			config.User = strings.TrimSpace(section.Key("User").String())
 			config.Password = strings.TrimSpace(section.Key("Password").String())
@@ -34,19 +37,4 @@ func loadConfiguration() ([]*Config, error) {
 	}
 
 	return configs, nil
-}
-
-func (cfg *Config) GetConnectionString() string {
-	return getConnectionString(cfg.SqlServer, cfg.Database, cfg.User, cfg.Password)
-}
-
-func getConnectionString(server, database, user, password string) string {
-	connStr := fmt.Sprintf("server=%s;database=%s", server, database)
-	if user != "" {
-		connStr += fmt.Sprintf(";user id=%s", user)
-	}
-	if password != "" {
-		connStr += fmt.Sprintf(";password=%s", password)
-	}
-	return connStr
 }
