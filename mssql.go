@@ -9,7 +9,7 @@ import (
 )
 
 var msIndexesQuery = `
-select  s1.name as SchemaName, t1.name as TableName, c1.name as ColumnName, i1.name as IndexName, ic1.index_column_id, ic1.is_descending_key, ic1.is_included_column, i1.is_disabled
+select  s1.name as SchemaName, t1.name as TableName, c1.name as ColumnName, i1.name as IndexName, ic1.key_ordinal, ic1.is_descending_key, ic1.is_included_column, i1.is_disabled
 from    sys.schemas s1
         join sys.tables t1 on t1.schema_id = s1.schema_id
         join sys.columns c1 on t1.object_id = c1.object_id
@@ -17,7 +17,7 @@ from    sys.schemas s1
         join sys.index_columns ic1 on ic1.object_id = c1.object_id and ic1.column_id = c1.column_id
         join sys.indexes i1 on i1.object_id = ic1.object_id and i1.index_id = ic1.index_id
 where i1.is_hypothetical = 0
-order by s1.name, t1.name, i1.name, ic1.index_column_id`
+order by s1.name, t1.name, i1.name, ic1.key_ordinal`
 
 type MsSqlEngine struct {
 	config *Config

@@ -4,12 +4,19 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"regexp"
+	"strings"
 
 	_ "github.com/lib/pq"
 )
 
 var postgresIndexesQuery = `
-select 'a', '', '', '', 0, true, false, true;`
+select schemaname, tablename, indexname, indexdef
+from pg_indexes
+where schemaname <> 'pg_catalog'
+order by schemaname, tablename, indexname, indexdef;`
+
+var postgresIndexRe = regexp.MustCompile(`.* USING btree \((.*)\)`)
 
 type PostgresEngine struct {
 	config *Config
@@ -40,29 +47,26 @@ func (e *PostgresEngine) GetIndexes() []*index {
 	}
 	defer rows.Close()
 
-	var schemeName, tableName, columnName, indexName string
-	var indexColumnId int
-	var isDescending, isIncluded, isDisabled bool
+	var schemeName, tableName, indexName, indexDef string
 	indexes := make([]*index, 0)
 	var prevSchemeName, prevTableName, prevIndexName string
 	var currentIndex *index
 	for rows.Next() {
-		err = rows.Scan(&schemeName, &tableName, &columnName, &indexName, &indexColumnId, &isDescending, &isIncluded, &isDisabled)
+		err = rows.Scan(&schemeName, &tableName, &indexName, &indexDef)
 		if err != nil {
 			log.Fatal("Scan failed:", err.Error())
 		}
 		if schemeName != prevSchemeName || tableName != prevTableName || indexName != prevIndexName {
 			prevSchemeName, prevTableName, prevIndexName = schemeName, tableName, indexName
-			currentIndex = &index{scheme: schemeName, table: tableName, index: indexName, enabled: !isDisabled, columns: make([]string, 0, 10), included: make([]string, 0, 10)}
+			currentIndex = &index{scheme: schemeName, table: tableName, index: indexName, enabled: true, columns: make([]string, 0, 10)}
 			indexes = append(indexes, currentIndex)
-		}
-		if !isIncluded {
-			if isDescending {
-				columnName += " DESC"
+
+			match := postgresIndexRe.FindStringSubmatch(indexDef)
+			columns := strings.Split(match[1], ",")
+			for _, column := range columns {
+				column = strings.TrimSpace(column)
+				currentIndex.columns = append(currentIndex.columns, column)
 			}
-			currentIndex.columns = append(currentIndex.columns, columnName)
-		} else {
-			currentIndex.included = append(currentIndex.included, columnName)
 		}
 	}
 	return indexes
